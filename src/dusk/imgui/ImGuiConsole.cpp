@@ -14,6 +14,7 @@
 #include "JSystem/JUtility/JUTGamePad.h"
 #include "dusk/action_bindings.h"
 #include "dusk/audio/DuskAudioSystem.h"
+#include "dusk/cave_of_ordeals.h"
 #include "dusk/config.hpp"
 #include "dusk/data.hpp"
 #include "dusk/dusk.h"
@@ -358,6 +359,9 @@ namespace dusk {
         m_menuTools.ShowInputViewer();
 
         if (dusk::IsGameLaunched && !dusk::getSettings().game.speedrunMode) {
+            // Tick the Cave of Ordeals randomizer every frame.
+            dusk::CaveOfOrdealsRandomizer::instance().tick();
+
             m_menuTools.ShowDebugOverlay();
             m_menuTools.ShowCameraOverlay();
             m_menuTools.ShowProcessManager();
@@ -369,6 +373,7 @@ namespace dusk {
             m_menuTools.ShowSaveEditor();
             m_menuTools.ShowStateShare();
             m_menuTools.ShowActorSpawner();
+            m_menuTools.ShowCaveOfOrdealsRandomizer();
         }
 
     }

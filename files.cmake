@@ -1465,6 +1465,8 @@ set(DUSK_FILES
         src/dusk/imgui/ImGuiMenuTools.cpp
         src/dusk/imgui/ImGuiMenuTools.hpp
         src/dusk/imgui/ImGuiActorSpawner.cpp
+        src/dusk/imgui/ImGuiCaveOfOrdealsRandomizer.cpp
+        src/dusk/cave_of_ordeals.cpp
         src/dusk/imgui/ImGuiProcessOverlay.cpp
         src/dusk/imgui/ImGuiCameraOverlay.cpp
         src/dusk/imgui/ImGuiHeapOverlay.cpp
