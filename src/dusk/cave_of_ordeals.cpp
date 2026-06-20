@@ -30,6 +30,11 @@ namespace dusk {
 // rotation direction, etc.) that a generic default-parameter spawn cannot
 // safely provide. Spawning it like a normal enemy risks broken behaviour or
 // a crash, so it is left out despite appearing on floor 31 in the original.
+//
+// Darknut (B_TN) and Aeralfos (B_GG) are also excluded: both are categorised
+// as "boss" actors (B_* prefix) rather than regular enemies (E_* prefix),
+// and in practice behave incorrectly when spawned outside their intended
+// scripted encounters.
 // ---------------------------------------------------------------------------
 static const s16 kEnemyPool[] = {
     0x1FE, // E_OC  – Bokoblin
@@ -54,10 +59,8 @@ static const s16 kEnemyPool[] = {
     0x1B8, // E_SF  – Stalfos (incl. mini/Stalchild variant)
     0x1E5, // E_FB  – Freezard
     0x1E0, // E_KK  – Chilfos
-    0x213, // B_TN  – Darknut
     0x1AF, // E_AI  – Armos
     0x1B5, // E_MF  – Dynalfos
-    0x214, // B_GG  – Aeralfos
 };
 static const int kEnemyPoolSize = static_cast<int>(sizeof(kEnemyPool) / sizeof(kEnemyPool[0]));
 
@@ -67,14 +70,17 @@ static const s16 kEnemyProcNames[] = {
     0x1FE, 0x1E7, 0x1EA, 0x1C9, 0x1BF, 0x1D4,
     0x1CF, 0x1B2, 0x206, 0x1B3, 0x1DD, 0x1BE,
     0x1BD, 0x1EB, 0x1DA, 0x1B9, 0x1D3, 0x1E9,
-    0x20A, 0x1B8, 0x1E5, 0x1E0, 0x213,
-    0x1AF, 0x1B5, 0x214,
+    0x20A, 0x1B8, 0x1E5, 0x1E0,
+    0x1AF, 0x1B5,
 };
 static const int kEnemyProcNamesSize =
     static_cast<int>(sizeof(kEnemyProcNames) / sizeof(kEnemyProcNames[0]));
 
-static constexpr int kMinEnemiesPerFloor = 2;
-static constexpr int kMaxEnemiesPerFloor = 4;
+// Default number of enemies added per floor. Adjustable at runtime via
+// CaveOfOrdealsRandomizer::setEnemiesPerFloor().
+static constexpr int kDefaultEnemiesPerFloor = 3;
+static constexpr int kMinEnemiesPerFloorSetting = 0;
+static constexpr int kMaxEnemiesPerFloorSetting = 16;
 
 static constexpr const char* kCaveStageName = "D_SB01";
 static constexpr int kCaveFloorCount        = 51;
@@ -125,6 +131,7 @@ CaveOfOrdealsRandomizer::CaveOfOrdealsRandomizer()
     : m_enabled(false)
     , m_lastRoomNo(-2)
     , m_lastSeed(0)
+    , m_enemiesPerFloor(kDefaultEnemiesPerFloor)
 {
     m_lastSeed = static_cast<unsigned int>(std::time(nullptr));
     std::srand(m_lastSeed);
@@ -144,6 +151,17 @@ void CaveOfOrdealsRandomizer::setEnabled(bool enabled) {
 
 bool         CaveOfOrdealsRandomizer::isEnabled()   const { return m_enabled; }
 unsigned int CaveOfOrdealsRandomizer::getLastSeed() const { return m_lastSeed; }
+
+int CaveOfOrdealsRandomizer::getEnemiesPerFloor() const { return m_enemiesPerFloor; }
+
+void CaveOfOrdealsRandomizer::setEnemiesPerFloor(int count) {
+    if (count < kMinEnemiesPerFloorSetting) count = kMinEnemiesPerFloorSetting;
+    if (count > kMaxEnemiesPerFloorSetting) count = kMaxEnemiesPerFloorSetting;
+    m_enemiesPerFloor = count;
+}
+
+int CaveOfOrdealsRandomizer::getMinEnemiesPerFloorSetting() const { return kMinEnemiesPerFloorSetting; }
+int CaveOfOrdealsRandomizer::getMaxEnemiesPerFloorSetting() const { return kMaxEnemiesPerFloorSetting; }
 
 void CaveOfOrdealsRandomizer::rerollSeed() {
     m_lastSeed = static_cast<unsigned int>(std::time(nullptr))
@@ -188,6 +206,12 @@ void CaveOfOrdealsRandomizer::tick() {
 // ---------------------------------------------------------------------------
 
 void CaveOfOrdealsRandomizer::spawnEnemiesForFloor(int roomNo) {
+    int count = m_enemiesPerFloor;
+    if (count <= 0) {
+        // User has set 0 enemies per floor – nothing to do.
+        return;
+    }
+
     EnemyPosScanData scan;
     scan.targetRoomNo = roomNo;
     scan.count        = 0;
@@ -205,11 +229,6 @@ void CaveOfOrdealsRandomizer::spawnEnemiesForFloor(int roomNo) {
         fpcLy_SetCurrentLayer(
             &reinterpret_cast<process_node_class*>(playScene)->layer);
     }
-
-    int count = kMinEnemiesPerFloor
-                + (std::rand() % (kMaxEnemiesPerFloor - kMinEnemiesPerFloor + 1))
-                + (roomNo / 10);
-    if (count > kMaxEnemiesPerFloor + 2) count = kMaxEnemiesPerFloor + 2;
 
     cXyz scale(1.0f, 1.0f, 1.0f);
 

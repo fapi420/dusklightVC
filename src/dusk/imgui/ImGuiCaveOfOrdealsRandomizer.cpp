@@ -64,6 +64,28 @@ void ImGuiMenuTools::ShowCaveOfOrdealsRandomizer() {
     // -----------------------------------------------------------------------
     if (enabled) {
         ImGui::Spacing();
+        ImGui::SeparatorText("Enemy Count");
+
+        int enemiesPerFloor = coor.getEnemiesPerFloor();
+        int minVal = coor.getMinEnemiesPerFloorSetting();
+        int maxVal = coor.getMaxEnemiesPerFloorSetting();
+        if (ImGui::SliderInt("Enemies per floor", &enemiesPerFloor, minVal, maxVal)) {
+            coor.setEnemiesPerFloor(enemiesPerFloor);
+        }
+        ImGui::SameLine();
+        ImGui::TextDisabled("(?)");
+        if (ImGui::IsItemHovered()) {
+            ImGui::BeginTooltip();
+            ImGui::PushTextWrapPos(350.0f);
+            ImGui::TextUnformatted(
+                "How many additional enemies are spawned each time you enter "
+                "a floor. This is a fixed amount, not randomized. Set to 0 "
+                "to disable spawning without turning the feature off.");
+            ImGui::PopTextWrapPos();
+            ImGui::EndTooltip();
+        }
+
+        ImGui::Spacing();
         ImGui::SeparatorText("Randomization Seed");
         ImGui::Text("Current seed: 0x%08X", coor.getLastSeed());
 
@@ -79,10 +101,11 @@ void ImGuiMenuTools::ShowCaveOfOrdealsRandomizer() {
         ImGui::Spacing();
         ImGui::SeparatorText("How it works");
         ImGui::TextWrapped(
-            "Each time you enter a new floor, %d to %d (+ depth bonus) random "
-            "enemies from the Cave's enemy pool are spawned around your position. "
-            "The spawn happens once per room transition.",
-            1, 4);
+            "Each time you enter a new floor, %d random enemies from the "
+            "Cave's enemy pool are spawned at the same positions as the "
+            "floor's original enemies. The spawn happens immediately, "
+            "alongside the original enemies, with no delay.",
+            enemiesPerFloor);
     }
 
     ImGui::End();
