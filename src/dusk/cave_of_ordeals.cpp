@@ -1,6 +1,8 @@
 #include "dusk/cave_of_ordeals.h"
 
 #include "d/actor/d_a_alink.h"
+#include "d/d_bg_s.h"
+#include "d/d_bg_s_gnd_chk.h"
 #include "d/d_com_inf_game.h"
 #include "f_op/f_op_actor.h"
 #include "f_op/f_op_actor_iter.h"
@@ -35,6 +37,9 @@ namespace dusk {
 // as "boss" actors (B_* prefix) rather than regular enemies (E_* prefix),
 // and in practice behave incorrectly when spawned outside their intended
 // scripted encounters.
+//
+// Imp Poe (E_PO) is also excluded after testing showed it causes problems
+// when spawned outside its intended scripted encounters.
 // ---------------------------------------------------------------------------
 static const s16 kEnemyPool[] = {
     0x1FE, // E_OC  – Bokoblin
@@ -51,7 +56,6 @@ static const s16 kEnemyPool[] = {
     0x1BE, // E_SM2 – Chu (Red/Blue/Yellow/Purple)
     0x1BD, // E_SM  – Chu Worm
     0x1EB, // E_BU  – Bubble (incl. Fire/Ice Bubble variants)
-    0x1DA, // E_PO  – Imp Poe
     0x1B9, // E_SH  – Stalhound
     0x1D3, // E_RB  – Leever
     0x1E9, // E_NZ  – Ghoul Rat
@@ -64,12 +68,67 @@ static const s16 kEnemyPool[] = {
 };
 static const int kEnemyPoolSize = static_cast<int>(sizeof(kEnemyPool) / sizeof(kEnemyPool[0]));
 
+// ---------------------------------------------------------------------------
+// Ground-bound enemies. These walk/sit on the floor and have no built-in
+// correction for being spawned slightly above or below ground level, unlike
+// e.g. flying enemies (Keese) which don't care about exact ground contact.
+// Spawning them at an anchor position sampled from a non-ground-bound
+// original enemy (e.g. a Bubble or Keese) can leave them floating in mid-air.
+// For these specific actors we perform an explicit ground raycast and snap
+// their spawn Y to the detected floor height.
+// ---------------------------------------------------------------------------
+static const s16 kGroundBoundEnemies[] = {
+    0x1FE, // E_OC  – Bokoblin
+    0x1E7, // E_MS  – Rat
+    0x1C9, // E_HB  – Baba Serpent
+    0x1BF, // E_ST  – Skulltula
+    0x1D4, // E_RD  – Bulblin / Bulblin Archer
+    0x1CF, // E_HM  – Torch Slug
+    0x1B2, // E_DD  – Dodongo
+    0x1B3, // E_DN  – Lizalfos
+    0x1DD, // E_MM  – Helmasaur
+    0x1B9, // E_SH  – Stalhound
+    0x1E9, // E_NZ  – Ghoul Rat
+    0x20A, // E_GI  – Gibdo
+    0x1B8, // E_SF  – Stalfos
+    0x1E5, // E_FB  – Freezard
+    0x1E0, // E_KK  – Chilfos
+    0x1AF, // E_AI  – Armos
+    0x1B5, // E_MF  – Dynalfos
+};
+static const int kGroundBoundEnemiesSize =
+    static_cast<int>(sizeof(kGroundBoundEnemies) / sizeof(kGroundBoundEnemies[0]));
+
+static bool isGroundBoundEnemy(s16 enemyId) {
+    for (int i = 0; i < kGroundBoundEnemiesSize; ++i) {
+        if (kGroundBoundEnemies[i] == enemyId) return true;
+    }
+    return false;
+}
+
+// Raycasts straight down from well above i_pos and returns the detected
+// ground height, or the original i_pos.y if no ground is found.
+static float snapToGroundY(const cXyz& i_pos) {
+    cXyz probePos = i_pos;
+    probePos.y += 1000.0f;
+
+    dBgS_ObjGndChk gndChk;
+    gndChk.SetPos(&probePos);
+    float groundY = dComIfG_Bgsp().GroundCross(&gndChk);
+
+    // GroundCross returns a large negative sentinel when nothing is hit.
+    if (groundY < -9000.0f) {
+        return i_pos.y;
+    }
+    return groundY;
+}
+
 // The same set, used to recognise existing live enemies in a room so we can
 // sample their positions as spawn anchors for the new random enemies.
 static const s16 kEnemyProcNames[] = {
     0x1FE, 0x1E7, 0x1EA, 0x1C9, 0x1BF, 0x1D4,
     0x1CF, 0x1B2, 0x206, 0x1B3, 0x1DD, 0x1BE,
-    0x1BD, 0x1EB, 0x1DA, 0x1B9, 0x1D3, 0x1E9,
+    0x1BD, 0x1EB, 0x1B9, 0x1D3, 0x1E9,
     0x20A, 0x1B8, 0x1E5, 0x1E0,
     0x1AF, 0x1B5,
 };
@@ -80,7 +139,7 @@ static const int kEnemyProcNamesSize =
 // CaveOfOrdealsRandomizer::setEnemiesPerFloor().
 static constexpr int kDefaultEnemiesPerFloor = 3;
 static constexpr int kMinEnemiesPerFloorSetting = 0;
-static constexpr int kMaxEnemiesPerFloorSetting = 16;
+static constexpr int kMaxEnemiesPerFloorSetting = 100;
 
 static constexpr const char* kCaveStageName = "D_SB01";
 static constexpr int kCaveFloorCount        = 51;
@@ -107,7 +166,10 @@ static int collectEnemyPositions(void* process, void* userData) {
 
     if (actor->current.roomNo != data->targetRoomNo) return 0;
 
-    s16 pname = base->profname;
+    // NOTE: base_process_class has both `name` (the fpcNm_*_e identifier we
+    // compare against here) and `profname` (an unrelated internal profile
+    // index) - using the wrong one silently fails to match most enemies.
+    s16 pname = base->name;
     bool isEnemy = false;
     for (int i = 0; i < kEnemyProcNamesSize; ++i) {
         if (kEnemyProcNames[i] == pname) { isEnemy = true; break; }
@@ -237,6 +299,13 @@ void CaveOfOrdealsRandomizer::spawnEnemiesForFloor(int roomNo) {
 
         int posIdx = std::rand() % scan.count;
         cXyz spawnPos = scan.positions[posIdx];
+
+        // Ground-bound enemies must sit exactly on the floor; the sampled
+        // anchor position may have come from a flying/floating original
+        // enemy (e.g. Keese, Bubble), so re-snap the Y coordinate here.
+        if (isGroundBoundEnemy(enemyId)) {
+            spawnPos.y = snapToGroundY(spawnPos);
+        }
 
         csXyz spawnAngle;
         spawnAngle.set(0, static_cast<s16>(std::rand() % 65536), 0);
