@@ -152,9 +152,16 @@ static constexpr int kMaxSampledPositions = 16;
 // ---------------------------------------------------------------------------
 struct EnemyPosScanData {
     int  targetRoomNo;
+    cXyz playerPos;
     cXyz positions[kMaxSampledPositions];
     int  count;
 };
+
+// Enemies further than this from the player are not considered "in this
+// room" even if current.roomNo happens to match - this guards against any
+// roomNo bookkeeping edge cases for actors whose room association might not
+// update the way a normal actor's does (e.g. ground-anchored plant enemies).
+static constexpr float kMaxAnchorDistanceFromPlayer = 3000.0f;
 
 static int collectEnemyPositions(void* process, void* userData) {
     auto* data = static_cast<EnemyPosScanData*>(userData);
@@ -165,8 +172,6 @@ static int collectEnemyPositions(void* process, void* userData) {
 
     auto* actor = static_cast<fopAc_ac_c*>(process);
 
-    if (actor->current.roomNo != data->targetRoomNo) return 0;
-
     // NOTE: base_process_class has both `name` (the fpcNm_*_e identifier we
     // compare against here) and `profname` (an unrelated internal profile
     // index) - using the wrong one silently fails to match most enemies.
@@ -176,6 +181,16 @@ static int collectEnemyPositions(void* process, void* userData) {
         if (kEnemyProcNames[i] == pname) { isEnemy = true; break; }
     }
     if (!isEnemy) return 0;
+
+    // Primary check: same room number.
+    bool sameRoom = (actor->current.roomNo == data->targetRoomNo);
+
+    // Secondary check: close enough to the player to plausibly be in the
+    // same room, used as a safety net in case roomNo bookkeeping doesn't
+    // line up for this actor type.
+    bool nearPlayer = actor->current.pos.abs(data->playerPos) <= kMaxAnchorDistanceFromPlayer;
+
+    if (!sameRoom && !nearPlayer) return 0;
 
     data->positions[data->count++] = actor->current.pos;
     return 0;
@@ -281,23 +296,24 @@ void CaveOfOrdealsRandomizer::spawnEnemiesForFloor(int roomNo) {
         return;
     }
 
+    daAlink_c* player = static_cast<daAlink_c*>(dComIfGp_getPlayer(0));
+    if (player == nullptr) {
+        return;
+    }
+
     EnemyPosScanData scan;
     scan.targetRoomNo = roomNo;
+    scan.playerPos    = player->current.pos;
     scan.count        = 0;
     fopAcIt_Executor(collectEnemyPositions, &scan);
 
     if (scan.count == 0) {
-        // No original enemies could be sampled in this room (e.g. the
-        // room's enemies use a procname this module doesn't recognise,
-        // or they were already defeated). Fall back to the player's own
-        // position so that this room still receives spawns instead of
-        // being silently skipped.
-        daAlink_c* player = static_cast<daAlink_c*>(dComIfGp_getPlayer(0));
-        if (player == nullptr) {
-            return;
-        }
-        scan.positions[0] = player->current.pos;
-        scan.count        = 1;
+        // No original enemies could be sampled in this room at all (e.g.
+        // they were all already defeated). Nothing to anchor new spawns
+        // to - intentionally skip rather than falling back to the
+        // player's position, since that would spawn enemies around the
+        // player instead of in the room's actual combat area.
+        return;
     }
 
     layer_class* savedLayer = fpcLy_CurrentLayer();
