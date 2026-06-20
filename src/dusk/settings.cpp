@@ -139,6 +139,10 @@ UserSettings g_userSettings = {
         .invincibleEnemies {"game.invincibleEnemies", false},
 
         // Technical
+        // Cave of Ordeals Randomizer
+        .caveOrdealsRandomizerEnabled {"game.caveOrdealsRandomizerEnabled", false},
+        .caveOrdealsEnemiesPerFloor {"game.caveOrdealsEnemiesPerFloor", 3},
+
         .restoreWiiGlitches {"game.restoreWiiGlitches", false},
 
         // Controls
@@ -283,6 +287,8 @@ void registerSettings() {
     Register(g_userSettings.game.canTransformAnywhere);
     Register(g_userSettings.game.fastRoll);
     Register(g_userSettings.game.armorRupeeDrain);
+    Register(g_userSettings.game.caveOrdealsRandomizerEnabled);
+    Register(g_userSettings.game.caveOrdealsEnemiesPerFloor);
     Register(g_userSettings.game.restoreWiiGlitches);
     Register(g_userSettings.game.enableLinkDollRotation);
     Register(g_userSettings.game.enableAchievementToasts);

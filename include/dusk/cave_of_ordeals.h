@@ -13,11 +13,16 @@ namespace dusk {
  * in the current room, picks out the ones matching known Cave-of-Ordeals
  * enemy types, and uses their positions (which come straight from the
  * room's original stage data) as anchor points for the new random enemies.
- * This guarantees enemies always appear in valid, intended combat spots,
- * at the same time as the original enemies — there is no spawn delay.
+ * If no original enemies could be sampled (e.g. their type isn't recognised,
+ * or they've already been defeated), the player's own position is used as a
+ * fallback so every floor still receives spawns. Ground-bound enemy types
+ * additionally get a ground-raycast applied to their spawn Y so they never
+ * end up floating mid-air after inheriting a flying enemy's anchor position.
  *
- * The number of enemies added per floor is fixed (not randomized) and can
- * be configured at runtime via setEnemiesPerFloor().
+ * Whether the randomizer is enabled and how many enemies it adds per floor
+ * are stored as persistent settings (game.caveOrdealsRandomizerEnabled /
+ * game.caveOrdealsEnemiesPerFloor) and are also exposed in the Dusklight
+ * options menu under the "Cave Randomizer" tab.
  *
  * The original ISO data is never modified.
  * When disabled the cave loads exactly as the original game defines it.
@@ -50,10 +55,8 @@ private:
 
     void spawnEnemiesForFloor(int roomNo);
 
-    bool         m_enabled;
-    int          m_lastRoomNo;   // floor we last spawned enemies for
-    unsigned int m_lastSeed;
-    int          m_enemiesPerFloor;
+    int          m_lastRoomNo;   // floor we last spawned enemies for (runtime-only)
+    unsigned int m_lastSeed;     // RNG seed (runtime-only)
 };
 
 } // namespace dusk

@@ -4,6 +4,8 @@
 #include "d/d_bg_s.h"
 #include "d/d_bg_s_gnd_chk.h"
 #include "d/d_com_inf_game.h"
+#include "dusk/config.hpp"
+#include "dusk/settings.h"
 #include "f_op/f_op_actor.h"
 #include "f_op/f_op_actor_iter.h"
 #include "f_op/f_op_actor_mng.h"
@@ -135,9 +137,8 @@ static const s16 kEnemyProcNames[] = {
 static const int kEnemyProcNamesSize =
     static_cast<int>(sizeof(kEnemyProcNames) / sizeof(kEnemyProcNames[0]));
 
-// Default number of enemies added per floor. Adjustable at runtime via
-// CaveOfOrdealsRandomizer::setEnemiesPerFloor().
-static constexpr int kDefaultEnemiesPerFloor = 3;
+// Bounds for the "enemies per floor" setting (see settings.cpp for the
+// persisted default value).
 static constexpr int kMinEnemiesPerFloorSetting = 0;
 static constexpr int kMaxEnemiesPerFloorSetting = 100;
 
@@ -190,10 +191,8 @@ CaveOfOrdealsRandomizer& CaveOfOrdealsRandomizer::instance() {
 }
 
 CaveOfOrdealsRandomizer::CaveOfOrdealsRandomizer()
-    : m_enabled(false)
-    , m_lastRoomNo(-2)
+    : m_lastRoomNo(-2)
     , m_lastSeed(0)
-    , m_enemiesPerFloor(kDefaultEnemiesPerFloor)
 {
     m_lastSeed = static_cast<unsigned int>(std::time(nullptr));
     std::srand(m_lastSeed);
@@ -204,22 +203,30 @@ CaveOfOrdealsRandomizer::CaveOfOrdealsRandomizer()
 // ---------------------------------------------------------------------------
 
 void CaveOfOrdealsRandomizer::setEnabled(bool enabled) {
-    if (m_enabled == enabled) return;
-    m_enabled = enabled;
-    if (!m_enabled) {
+    bool wasEnabled = getSettings().game.caveOrdealsRandomizerEnabled.getValue();
+    if (wasEnabled == enabled) return;
+    getSettings().game.caveOrdealsRandomizerEnabled.setValue(enabled);
+    config::Save();
+    if (!enabled) {
         m_lastRoomNo = -2;
     }
 }
 
-bool         CaveOfOrdealsRandomizer::isEnabled()   const { return m_enabled; }
+bool CaveOfOrdealsRandomizer::isEnabled() const {
+    return getSettings().game.caveOrdealsRandomizerEnabled.getValue();
+}
+
 unsigned int CaveOfOrdealsRandomizer::getLastSeed() const { return m_lastSeed; }
 
-int CaveOfOrdealsRandomizer::getEnemiesPerFloor() const { return m_enemiesPerFloor; }
+int CaveOfOrdealsRandomizer::getEnemiesPerFloor() const {
+    return getSettings().game.caveOrdealsEnemiesPerFloor.getValue();
+}
 
 void CaveOfOrdealsRandomizer::setEnemiesPerFloor(int count) {
     if (count < kMinEnemiesPerFloorSetting) count = kMinEnemiesPerFloorSetting;
     if (count > kMaxEnemiesPerFloorSetting) count = kMaxEnemiesPerFloorSetting;
-    m_enemiesPerFloor = count;
+    getSettings().game.caveOrdealsEnemiesPerFloor.setValue(count);
+    config::Save();
 }
 
 int CaveOfOrdealsRandomizer::getMinEnemiesPerFloorSetting() const { return kMinEnemiesPerFloorSetting; }
@@ -238,7 +245,7 @@ void CaveOfOrdealsRandomizer::rerollSeed() {
 // ---------------------------------------------------------------------------
 
 void CaveOfOrdealsRandomizer::tick() {
-    if (!m_enabled) return;
+    if (!isEnabled()) return;
 
     const char* stageName = dComIfGp_getStartStageName();
     if (stageName == nullptr || std::strcmp(stageName, kCaveStageName) != 0) {
@@ -268,7 +275,7 @@ void CaveOfOrdealsRandomizer::tick() {
 // ---------------------------------------------------------------------------
 
 void CaveOfOrdealsRandomizer::spawnEnemiesForFloor(int roomNo) {
-    int count = m_enemiesPerFloor;
+    int count = getEnemiesPerFloor();
     if (count <= 0) {
         // User has set 0 enemies per floor – nothing to do.
         return;
@@ -280,9 +287,17 @@ void CaveOfOrdealsRandomizer::spawnEnemiesForFloor(int roomNo) {
     fopAcIt_Executor(collectEnemyPositions, &scan);
 
     if (scan.count == 0) {
-        // No original enemies present (e.g. an empty reward floor) –
-        // nothing to anchor new spawns to.
-        return;
+        // No original enemies could be sampled in this room (e.g. the
+        // room's enemies use a procname this module doesn't recognise,
+        // or they were already defeated). Fall back to the player's own
+        // position so that this room still receives spawns instead of
+        // being silently skipped.
+        daAlink_c* player = static_cast<daAlink_c*>(dComIfGp_getPlayer(0));
+        if (player == nullptr) {
+            return;
+        }
+        scan.positions[0] = player->current.pos;
+        scan.count        = 1;
     }
 
     layer_class* savedLayer = fpcLy_CurrentLayer();

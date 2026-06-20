@@ -253,6 +253,10 @@ struct UserSettings {
         ConfigVar<MagicArmorMode> armorRupeeDrain;
         ConfigVar<bool> invincibleEnemies;
 
+        // Cave of Ordeals Randomizer
+        ConfigVar<bool> caveOrdealsRandomizerEnabled;
+        ConfigVar<int> caveOrdealsEnemiesPerFloor;
+
         // Technical
         ConfigVar<bool> restoreWiiGlitches;
 

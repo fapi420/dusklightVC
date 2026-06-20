@@ -1586,6 +1586,35 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
             "Recording Mode",
             "Disables the game HUD and all background music.<br/><br/>Useful for recording footage.");
     });
+
+    add_tab("Cave Randomizer", [this](Rml::Element* content) {
+        auto& leftPane = add_child<Pane>(content, Pane::Type::Controlled);
+        auto& rightPane = add_child<Pane>(content, Pane::Type::Uncontrolled);
+
+        leftPane.add_section("Cave of Ordeals Randomizer");
+
+        config_bool_select(leftPane, rightPane, getSettings().game.caveOrdealsRandomizerEnabled,
+            {
+                .key = "Enable Random Enemy Spawning",
+                .helpText =
+                    "When ON: entering any floor of the Cave of Ordeals spawns extra random "
+                    "enemies at the same positions as the floor's original enemies, alongside "
+                    "them, with no delay.<br/><br/>"
+                    "When OFF: the cave loads exactly as the original game defines it. The ISO "
+                    "is never modified.",
+            });
+
+        config_int_select(leftPane, rightPane, getSettings().game.caveOrdealsEnemiesPerFloor,
+            "Enemies Per Floor",
+            "How many additional enemies are spawned each time you enter a floor. This is a "
+            "fixed amount, not randomized. Set to 0 to disable spawning without turning the "
+            "feature off.<br/><br/>"
+            "Only enemy types that normally appear in the Cave of Ordeals are used. Boss-type "
+            "enemies and a small number of enemies known to behave incorrectly outside their "
+            "intended scripted encounters are excluded.",
+            0, 100, 1,
+            [] { return !getSettings().game.caveOrdealsRandomizerEnabled.getValue(); });
+    });
 }
 
 void SettingsWindow::update() {

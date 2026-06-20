@@ -373,7 +373,6 @@ namespace dusk {
             m_menuTools.ShowSaveEditor();
             m_menuTools.ShowStateShare();
             m_menuTools.ShowActorSpawner();
-            m_menuTools.ShowCaveOfOrdealsRandomizer();
         }
 
     }
