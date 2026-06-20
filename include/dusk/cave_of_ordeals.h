@@ -6,13 +6,15 @@ namespace dusk {
  * CaveOfOrdealsRandomizer
  *
  * When enabled, intercepts every room transition inside the Cave of Ordeals
- * (stage "D_SB01") and dynamically spawns a random selection of enemies on
- * the actual floor geometry using ground-raycasts.
+ * (stage "D_SB01") and spawns a random selection of enemies at the exact
+ * positions where the room's *original* enemies already are.
  *
- * A short delay (kSpawnDelayFrames) is applied after each room transition so
- * that the collision mesh is fully loaded before raycasts are performed –
- * this ensures enemies land correctly on the first floor as well as all
- * subsequent ones.
+ * Instead of guessing spawn coordinates, this module scans all live actors
+ * in the current room, picks out the ones matching known Cave-of-Ordeals
+ * enemy types, and uses their positions (which come straight from the
+ * room's original stage data) as anchor points for the new random enemies.
+ * This guarantees enemies always appear in valid, intended combat spots,
+ * at the same time as the original enemies — there is no spawn delay.
  *
  * The original ISO data is never modified.
  * When disabled the cave loads exactly as the original game defines it.
@@ -26,7 +28,7 @@ public:
 
     unsigned int getLastSeed() const;
 
-    // Re-roll the RNG seed and force a re-spawn on the current floor.
+    // Re-roll the RNG seed and force an immediate re-spawn on the current floor.
     void         rerollSeed();
 
     // Must be called once per frame while the game is running.
@@ -38,9 +40,7 @@ private:
     void spawnEnemiesForFloor(int roomNo);
 
     bool         m_enabled;
-    int          m_lastRoomNo;       // floor we last recorded a transition for
-    int          m_pendingRoomNo;    // floor waiting for the delay timer
-    int          m_framesUntilSpawn; // countdown; -1 = idle
+    int          m_lastRoomNo;   // floor we last spawned enemies for
     unsigned int m_lastSeed;
 };
 
