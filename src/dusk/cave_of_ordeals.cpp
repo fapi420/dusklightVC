@@ -5,6 +5,7 @@
 #include "d/d_bg_s_gnd_chk.h"
 #include "d/d_com_inf_game.h"
 #include "dusk/config.hpp"
+#include "dusk/logging.h"
 #include "dusk/settings.h"
 #include "f_op/f_op_actor.h"
 #include "f_op/f_op_actor_iter.h"
@@ -197,6 +198,35 @@ static int collectEnemyPositions(void* process, void* userData) {
 }
 
 // ---------------------------------------------------------------------------
+// Diagnostics: log every live actor process so we can see exactly what
+// exists when a room fails to yield any spawn anchors. This is temporary
+// debugging instrumentation to track down the Floor 3 issue and can be
+// removed once it's resolved.
+// ---------------------------------------------------------------------------
+static int logEveryActor(void* process, void* userData) {
+    int* targetRoomNo = static_cast<int*>(userData);
+
+    auto* base = static_cast<base_process_class*>(process);
+    if (!fopAcM_IsActor(base)) return 0;
+
+    auto* actor = static_cast<fopAc_ac_c*>(process);
+
+    bool isPoolEnemy = false;
+    for (int i = 0; i < kEnemyProcNamesSize; ++i) {
+        if (kEnemyProcNames[i] == base->name) { isPoolEnemy = true; break; }
+    }
+
+    DuskLog.info(
+        "[CaveOrdeals] actor name=0x{:X} profname=0x{:X} current.roomNo={} "
+        "(target={}) pos=({:.1f},{:.1f},{:.1f}) inPool={}",
+        base->name, base->profname, actor->current.roomNo, *targetRoomNo,
+        actor->current.pos.x, actor->current.pos.y, actor->current.pos.z,
+        isPoolEnemy);
+
+    return 0;
+}
+
+// ---------------------------------------------------------------------------
 // Singleton
 // ---------------------------------------------------------------------------
 
@@ -313,6 +343,10 @@ void CaveOfOrdealsRandomizer::spawnEnemiesForFloor(int roomNo) {
         // to - intentionally skip rather than falling back to the
         // player's position, since that would spawn enemies around the
         // player instead of in the room's actual combat area.
+        DuskLog.warn(
+            "[CaveOrdeals] room {} yielded 0 spawn anchors - dumping all live actors:",
+            roomNo);
+        fopAcIt_Executor(logEveryActor, &roomNo);
         return;
     }
 
