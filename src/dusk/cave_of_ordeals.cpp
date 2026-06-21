@@ -48,7 +48,9 @@ static const s16 kEnemyPool[] = {
     0x1FE, // E_OC  – Bokoblin
     0x1E7, // E_MS  – Rat
     0x1EA, // E_BA  – Keese (incl. Fire/Ice Keese variants)
-    0x1C9, // E_HB  – Baba Serpent (Hebi Baba)
+    0x1C5, // E_DB  – Baba Serpent (Deku Baba; confirmed via live diagnostics
+           //         in the Cave of Ordeals - the E_HB actor never appears
+           //         there at all)
     0x1BF, // E_ST  – Skulltula
     0x1D4, // E_RD  – Bulblin / Bulblin Archer
     0x1CF, // E_HM  – Torch Slug
@@ -83,7 +85,7 @@ static const int kEnemyPoolSize = static_cast<int>(sizeof(kEnemyPool) / sizeof(k
 static const s16 kGroundBoundEnemies[] = {
     0x1FE, // E_OC  – Bokoblin
     0x1E7, // E_MS  – Rat
-    0x1C9, // E_HB  – Baba Serpent
+    0x1C5, // E_DB  – Baba Serpent
     0x1BF, // E_ST  – Skulltula
     0x1D4, // E_RD  – Bulblin / Bulblin Archer
     0x1CF, // E_HM  – Torch Slug
@@ -129,7 +131,7 @@ static float snapToGroundY(const cXyz& i_pos) {
 // The same set, used to recognise existing live enemies in a room so we can
 // sample their positions as spawn anchors for the new random enemies.
 static const s16 kEnemyProcNames[] = {
-    0x1FE, 0x1E7, 0x1EA, 0x1C9, 0x1BF, 0x1D4,
+    0x1FE, 0x1E7, 0x1EA, 0x1C5, 0x1BF, 0x1D4,
     0x1CF, 0x1B2, 0x206, 0x1B3, 0x1DD, 0x1BE,
     0x1BD, 0x1EB, 0x1B9, 0x1D3, 0x1E9,
     0x20A, 0x1B8, 0x1E5, 0x1E0,
