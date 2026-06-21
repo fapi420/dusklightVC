@@ -143,6 +143,11 @@ UserSettings g_userSettings = {
         .caveOrdealsRandomizerEnabled {"game.caveOrdealsRandomizerEnabled", false},
         .caveOrdealsEnemiesPerFloor {"game.caveOrdealsEnemiesPerFloor", 3},
 
+        // Random Encounter
+        .randomEncounterEnabled {"game.randomEncounterEnabled", false},
+        .randomEncounterIntervalTier {"game.randomEncounterIntervalTier", 1}, // Often
+        .randomEncounterAmountTier {"game.randomEncounterAmountTier", 0},    // Few
+
         .restoreWiiGlitches {"game.restoreWiiGlitches", false},
 
         // Controls
@@ -289,6 +294,9 @@ void registerSettings() {
     Register(g_userSettings.game.armorRupeeDrain);
     Register(g_userSettings.game.caveOrdealsRandomizerEnabled);
     Register(g_userSettings.game.caveOrdealsEnemiesPerFloor);
+    Register(g_userSettings.game.randomEncounterEnabled);
+    Register(g_userSettings.game.randomEncounterIntervalTier);
+    Register(g_userSettings.game.randomEncounterAmountTier);
     Register(g_userSettings.game.restoreWiiGlitches);
     Register(g_userSettings.game.enableLinkDollRotation);
     Register(g_userSettings.game.enableAchievementToasts);

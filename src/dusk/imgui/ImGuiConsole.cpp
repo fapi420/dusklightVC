@@ -15,6 +15,7 @@
 #include "dusk/action_bindings.h"
 #include "dusk/audio/DuskAudioSystem.h"
 #include "dusk/cave_of_ordeals.h"
+#include "dusk/random_encounter.h"
 #include "dusk/config.hpp"
 #include "dusk/data.hpp"
 #include "dusk/dusk.h"
@@ -361,6 +362,8 @@ namespace dusk {
         if (dusk::IsGameLaunched && !dusk::getSettings().game.speedrunMode) {
             // Tick the Cave of Ordeals randomizer every frame.
             dusk::CaveOfOrdealsRandomizer::instance().tick();
+            // Tick the random encounter system every frame.
+            dusk::RandomEncounter::instance().tick();
 
             m_menuTools.ShowDebugOverlay();
             m_menuTools.ShowCameraOverlay();

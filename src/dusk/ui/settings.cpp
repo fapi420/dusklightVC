@@ -96,6 +96,20 @@ constexpr std::array kMagicArmorModes = {
     "Cosmetic",
 };
 
+constexpr std::array kRandomEncounterIntervalLabels = {
+    "Frequent",
+    "Often",
+    "Occasionally",
+    "Seldom",
+};
+
+constexpr std::array kRandomEncounterAmountLabels = {
+    "Few",
+    "Handful",
+    "Plentiful",
+    "Countless",
+};
+
 bool try_parse_backend(std::string_view backend, AuroraBackend& outBackend) {
     if (backend == "auto") {
         outBackend = BACKEND_AUTO;
@@ -1607,6 +1621,85 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
             "How many extra enemies are added to each floor of the Cave of Ordeals.",
             0, 100, 1,
             [] { return !getSettings().game.caveOrdealsRandomizerEnabled.getValue(); });
+
+        leftPane.add_section("Random Encounter");
+
+        config_bool_select(leftPane, rightPane, getSettings().game.randomEncounterEnabled,
+            {
+                .key = "Enable Random Encounters",
+                .helpText =
+                    "While exploring, groups of enemies will occasionally appear around "
+                    "Link out in the open. Encounters won't trigger indoors, in town, or "
+                    "during cutscenes.",
+            });
+
+        leftPane.register_control(
+            leftPane.add_select_button({
+                .key = "Encounter Frequency",
+                .getValue =
+                    [] {
+                        return kRandomEncounterIntervalLabels[static_cast<u8>(
+                            getSettings().game.randomEncounterIntervalTier.getValue())];
+                    },
+                .isDisabled = [] { return !getSettings().game.randomEncounterEnabled.getValue(); },
+                .isModified =
+                    [] {
+                        return getSettings().game.randomEncounterIntervalTier.getValue() !=
+                               getSettings().game.randomEncounterIntervalTier.getDefaultValue();
+                    },
+            }),
+            rightPane, [](Pane& pane) {
+                for (int i = 0; i < kRandomEncounterIntervalLabels.size(); i++) {
+                    pane.add_button({
+                            .text = kRandomEncounterIntervalLabels[i],
+                            .isSelected =
+                                [i] {
+                                    return getSettings().game.randomEncounterIntervalTier.getValue() == i;
+                                },
+                        })
+                        .on_pressed([i] {
+                            mDoAud_seStartMenu(kSoundItemChange);
+                            getSettings().game.randomEncounterIntervalTier.setValue(i);
+                            config::Save();
+                        });
+                }
+                pane.add_rml(
+                    "<br/>How often a new group of enemies appears while exploring.");
+            });
+
+        leftPane.register_control(
+            leftPane.add_select_button({
+                .key = "Encounter Size",
+                .getValue =
+                    [] {
+                        return kRandomEncounterAmountLabels[static_cast<u8>(
+                            getSettings().game.randomEncounterAmountTier.getValue())];
+                    },
+                .isDisabled = [] { return !getSettings().game.randomEncounterEnabled.getValue(); },
+                .isModified =
+                    [] {
+                        return getSettings().game.randomEncounterAmountTier.getValue() !=
+                               getSettings().game.randomEncounterAmountTier.getDefaultValue();
+                    },
+            }),
+            rightPane, [](Pane& pane) {
+                for (int i = 0; i < kRandomEncounterAmountLabels.size(); i++) {
+                    pane.add_button({
+                            .text = kRandomEncounterAmountLabels[i],
+                            .isSelected =
+                                [i] {
+                                    return getSettings().game.randomEncounterAmountTier.getValue() == i;
+                                },
+                        })
+                        .on_pressed([i] {
+                            mDoAud_seStartMenu(kSoundItemChange);
+                            getSettings().game.randomEncounterAmountTier.setValue(i);
+                            config::Save();
+                        });
+                }
+                pane.add_rml(
+                    "<br/>How many enemies appear in each random encounter.");
+            });
     });
 }
 

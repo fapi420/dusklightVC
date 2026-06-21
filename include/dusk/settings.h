@@ -257,6 +257,11 @@ struct UserSettings {
         ConfigVar<bool> caveOrdealsRandomizerEnabled;
         ConfigVar<int> caveOrdealsEnemiesPerFloor;
 
+        // Random Encounter
+        ConfigVar<bool> randomEncounterEnabled;
+        ConfigVar<int> randomEncounterIntervalTier;  // 0=Frequent,1=Often,2=Occasionally,3=Seldom
+        ConfigVar<int> randomEncounterAmountTier;     // 0=Few,1=Handful,2=Plentiful,3=Countless
+
         // Technical
         ConfigVar<bool> restoreWiiGlitches;
 
