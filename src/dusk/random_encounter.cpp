@@ -43,18 +43,20 @@ static const s16 kFieldEnemyPool[] = {
     0x206, // E_TT  – Tektite (Red/Blue)
     0x1B3, // E_DN  – Lizalfos
     0x1DD, // E_MM  – Helmasaur
-    0x1BE, // E_SM2 – Chu (Red/Blue/Yellow/Purple)
+    0x1BE, // E_SM2 – Chu (Green/Red/Blue/Yellow/Purple/Black, see buildCreationParam below)
     0x1BD, // E_SM  – Chu Worm
     0x1EB, // E_BU  – Bubble (incl. Fire/Ice Bubble variants)
-    0x1B9, // E_SH  – Stalhound
     0x1D3, // E_RB  – Leever
     0x1E9, // E_NZ  – Ghoul Rat
     0x20A, // E_GI  – Gibdo
     0x1B8, // E_SF  – Stalfos (incl. mini/Stalchild variant)
-    0x1E5, // E_FB  – Freezard
     0x1E0, // E_KK  – Chilfos
     0x1AF, // E_AI  – Armos
     0x1B5, // E_MF  – Dynalfos
+    // Excluded: E_SH (Stalhound) - its appear/disappear animation relies on
+    // room-bound particles not present in field stages, leaving it visually
+    // broken. E_FB (Freezard) - ice breath particle uses dPa_RM, invisible
+    // outside its native dungeon stage.
 };
 static const int kFieldEnemyPoolSize =
     static_cast<int>(sizeof(kFieldEnemyPool) / sizeof(kFieldEnemyPool[0]));
@@ -269,8 +271,33 @@ void RandomEncounter::triggerEncounter() {
 
     cXyz scale(1.0f, 1.0f, 1.0f);
 
+    // E_GI (Gibdo) has a static global scream lock: only the first Gibdo
+    // to call setCryStop() in a given frame acquires it; all others stay
+    // silently mute until it's released. Cap Gibdo spawns to 1 per
+    // encounter so the one that appears can always acquire the lock.
+    static constexpr s16 kGibdoId = 0x20A;
+    bool gibdoSpawnedThisEncounter = false;
+
     for (int i = 0; i < count; ++i) {
         s16 enemyId = kFieldEnemyPool[std::rand() % kFieldEnemyPoolSize];
+
+        if (enemyId == kGibdoId) {
+            if (gibdoSpawnedThisEncounter) {
+                // Re-roll until we get a non-Gibdo enemy.
+                int attempts = 0;
+                while (enemyId == kGibdoId && attempts < 10) {
+                    enemyId = kFieldEnemyPool[std::rand() % kFieldEnemyPoolSize];
+                    ++attempts;
+                }
+                // If all 10 re-rolls still landed on Gibdo (tiny pool edge
+                // case), skip this slot entirely rather than spawn a mute one.
+                if (enemyId == kGibdoId) {
+                    continue;
+                }
+            } else {
+                gibdoSpawnedThisEncounter = true;
+            }
+        }
 
         // Distribute spawn angles roughly evenly around the player, with
         // a little jitter so it doesn't look like a perfectly even ring,

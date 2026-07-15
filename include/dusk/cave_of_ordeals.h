@@ -22,7 +22,7 @@ namespace dusk {
  * Whether the randomizer is enabled and how many enemies it adds per floor
  * are stored as persistent settings (game.caveOrdealsRandomizerEnabled /
  * game.caveOrdealsEnemiesPerFloor) and are also exposed in the Dusklight
- * options menu under the "Cave Randomizer" tab.
+ * options menu under the "Enemy Randomizer" tab.
  *
  * The original ISO data is never modified.
  * When disabled the cave loads exactly as the original game defines it.
