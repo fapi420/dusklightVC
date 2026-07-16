@@ -16,6 +16,7 @@
 #include "dusk/audio/DuskAudioSystem.h"
 #include "dusk/cave_of_ordeals.h"
 #include "dusk/random_encounter.h"
+#include "dusk/boss_rush.h"
 #include "dusk/config.hpp"
 #include "dusk/data.hpp"
 #include "dusk/dusk.h"
@@ -364,6 +365,8 @@ namespace dusk {
             dusk::CaveOfOrdealsRandomizer::instance().tick();
             // Tick the random encounter system every frame.
             dusk::RandomEncounter::instance().tick();
+            // Tick the boss rush system every frame.
+            dusk::BossRush::instance().tick();
 
             m_menuTools.ShowDebugOverlay();
             m_menuTools.ShowCameraOverlay();

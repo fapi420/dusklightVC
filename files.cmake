@@ -1467,6 +1467,7 @@ set(DUSK_FILES
         src/dusk/imgui/ImGuiActorSpawner.cpp
         src/dusk/cave_of_ordeals.cpp
         src/dusk/random_encounter.cpp
+        src/dusk/boss_rush.cpp
         src/dusk/imgui/ImGuiProcessOverlay.cpp
         src/dusk/imgui/ImGuiCameraOverlay.cpp
         src/dusk/imgui/ImGuiHeapOverlay.cpp

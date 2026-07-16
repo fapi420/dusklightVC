@@ -1700,6 +1700,140 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
                 pane.add_rml(
                     "<br/>How many enemies appear in each random encounter.");
             });
+
+        leftPane.add_section("Boss Rush");
+
+        // --- Mode selector ---
+        static const char* kModeLabels[] = {
+            "Boss (Single)",
+            "Miniboss (Single)",
+            "Boss Rush",
+            "Miniboss Rush",
+            "Full Rush",
+        };
+        static int s_selectedMode = 0;
+        static int s_selectedBoss     = 0;
+        static int s_selectedMiniboss = 0;
+
+        leftPane.register_control(
+            leftPane.add_select_button({
+                .key = "Mode",
+                .getValue = [] { return kModeLabels[s_selectedMode]; },
+                .isDisabled = [] { return dusk::BossRush::instance().isActive(); },
+            }),
+            rightPane, [](Pane& pane) {
+                for (int i = 0; i < 5; ++i) {
+                    pane.add_button({
+                            .text = kModeLabels[i],
+                            .isSelected = [i] { return s_selectedMode == i; },
+                        })
+                        .on_pressed([i] {
+                            mDoAud_seStartMenu(kSoundItemChange);
+                            s_selectedMode = i;
+                        });
+                }
+                pane.add_rml(
+                    "<br/>Single: fight one chosen boss or miniboss and return.<br/>"
+                    "Rush: fight all in story order.");
+            });
+
+        // --- Boss picker (shown only for Boss Single mode) ---
+        leftPane.register_control(
+            leftPane.add_select_button({
+                .key = "Boss",
+                .getValue = [] {
+                    return dusk::BossRush::getBossList()[s_selectedBoss].displayName;
+                },
+                .isDisabled = [] {
+                    return s_selectedMode != 0 || dusk::BossRush::instance().isActive();
+                },
+            }),
+            rightPane, [](Pane& pane) {
+                const auto* list = dusk::BossRush::getBossList();
+                int count = dusk::BossRush::getBossCount();
+                for (int i = 0; i < count; ++i) {
+                    pane.add_button({
+                            .text = list[i].displayName,
+                            .isSelected = [i] { return s_selectedBoss == i; },
+                        })
+                        .on_pressed([i] {
+                            mDoAud_seStartMenu(kSoundItemChange);
+                            s_selectedBoss = i;
+                        });
+                }
+            });
+
+        // --- Miniboss picker (shown only for Miniboss Single mode) ---
+        leftPane.register_control(
+            leftPane.add_select_button({
+                .key = "Miniboss",
+                .getValue = [] {
+                    return dusk::BossRush::getMinibossList()[s_selectedMiniboss].displayName;
+                },
+                .isDisabled = [] {
+                    return s_selectedMode != 1 || dusk::BossRush::instance().isActive();
+                },
+            }),
+            rightPane, [](Pane& pane) {
+                const auto* list = dusk::BossRush::getMinibossList();
+                int count = dusk::BossRush::getMinibossCount();
+                for (int i = 0; i < count; ++i) {
+                    pane.add_button({
+                            .text = list[i].displayName,
+                            .isSelected = [i] { return s_selectedMiniboss == i; },
+                        })
+                        .on_pressed([i] {
+                            mDoAud_seStartMenu(kSoundItemChange);
+                            s_selectedMiniboss = i;
+                        });
+                }
+            });
+
+        // --- Start / Abort ---
+        leftPane.register_control(
+            leftPane.add_button({
+                .text = [] () -> const char* {
+                    return dusk::BossRush::instance().isActive() ? "Abort Rush" : "Start Rush";
+                },
+            }),
+            rightPane, [](Pane& pane) {
+                pane.clear();
+                auto& rush = dusk::BossRush::instance();
+                if (rush.isActive()) {
+                    const auto* entry = rush.currentEntry();
+                    if (entry) {
+                        pane.add_rml(
+                            Rml::String("Fight ") +
+                            std::to_string(rush.currentFightIndex() + 1) + " / " +
+                            std::to_string(rush.totalFights()) + ": " +
+                            entry->displayName);
+                    }
+                    pane.add_rml(
+                        "<br/>Your equipment and health will be restored when the run ends.");
+                } else {
+                    pane.add_rml(
+                        "Your current position, health, and all consumables are "
+                        "saved before the run starts and fully restored when it ends, "
+                        "win or lose.");
+                }
+            })
+            .on_pressed([] {
+                mDoAud_seStartMenu(kSoundItemChange);
+                auto& rush = dusk::BossRush::instance();
+                if (rush.isActive()) {
+                    rush.abort();
+                } else {
+                    using Mode = dusk::BossRush::Mode;
+                    Mode mode = static_cast<Mode>(s_selectedMode);
+                    if (mode == Mode::MinibossSingle) {
+                        rush.start(mode, s_selectedMiniboss, true);
+                    } else if (mode == Mode::BossSingle) {
+                        rush.start(mode, s_selectedBoss, false);
+                    } else {
+                        rush.start(mode, 0, false);
+                    }
+                }
+            });
     });
 }
 
